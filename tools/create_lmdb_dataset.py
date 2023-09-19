@@ -3,7 +3,7 @@
 import io
 import os
 
-import fire
+# import fire
 import lmdb
 import numpy as np
 from PIL import Image
@@ -42,7 +42,8 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
 
     nSamples = len(data)
     for i, line in enumerate(data):
-        imagePath, label = line.strip().split(maxsplit=1)
+        # imagePath, label = line.strip().split(maxsplit=1)
+        imagePath, label = line.strip().split('\t')
         imagePath = os.path.join(inputPath, imagePath)
         with open(imagePath, 'rb') as f:
             imageBin = f.read()
@@ -75,4 +76,18 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
 
 
 if __name__ == '__main__':
-    fire.Fire(createDataset)
+    # fire.Fire(createDataset)
+    root = '/workspace3/datasets'
+    src_root = os.path.join(root, 'hw_score_data')
+    out_train_root = os.path.join(src_root, '0_lmdb', 'train')
+    out_val_root = os.path.join(src_root, '0_lmdb', 'val')
+    # dir_name = ['images_00', 'images_01', 'images_02', 'images_03', 'images_04', 'images_05', 'images_06', 'images_07', 'images_08', 'images_09',
+    #             'images_10', 'images_10-1']
+    dir_name = ['images_10', 'images_10-1']
+    for d_name in dir_name:
+        for txt_type in ['train', 'test']:
+            save_lmdb_path = os.path.join(out_train_root, d_name) if txt_type == 'train' else os.path.join(out_val_root, d_name)
+            txt_path = os.path.join(src_root, f'{d_name}_{txt_type}.txt')
+            # img_path = os.path.join(src_root, d_name)
+
+            createDataset(inputPath=root, gtFile=txt_path, outputPath=save_lmdb_path)

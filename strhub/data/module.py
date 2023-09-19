@@ -29,13 +29,14 @@ class SceneTextDataModule(pl.LightningDataModule):
     TEST_NEW = ('ArT', 'COCOv1.4', 'Uber')
     TEST_ALL = tuple(set(TEST_BENCHMARK_SUB + TEST_BENCHMARK + TEST_NEW))
 
-    def __init__(self, root_dir: str, train_dir: str, img_size: Sequence[int], max_label_length: int,
+    def __init__(self, root_dir: str, train_dir: str, val_dir: str, img_size: Sequence[int], max_label_length: int,
                  charset_train: str, charset_test: str, batch_size: int, num_workers: int, augment: bool,
                  remove_whitespace: bool = True, normalize_unicode: bool = True,
                  min_image_dim: int = 0, rotation: int = 0, collate_fn: Optional[Callable] = None):
         super().__init__()
         self.root_dir = root_dir
         self.train_dir = train_dir
+        self.val_dir = val_dir
         self.img_size = tuple(img_size)
         self.max_label_length = max_label_length
         self.charset_train = charset_train
@@ -70,7 +71,8 @@ class SceneTextDataModule(pl.LightningDataModule):
     def train_dataset(self):
         if self._train_dataset is None:
             transform = self.get_transform(self.img_size, self.augment)
-            root = PurePath(self.root_dir, 'train', self.train_dir)
+            # root = PurePath(self.root_dir, 'train', self.train_dir)
+            root = PurePath(self.root_dir, self.train_dir)
             self._train_dataset = build_tree_dataset(root, self.charset_train, self.max_label_length,
                                                      self.min_image_dim, self.remove_whitespace, self.normalize_unicode,
                                                      transform=transform)
@@ -80,7 +82,8 @@ class SceneTextDataModule(pl.LightningDataModule):
     def val_dataset(self):
         if self._val_dataset is None:
             transform = self.get_transform(self.img_size)
-            root = PurePath(self.root_dir, 'val')
+            # root = PurePath(self.root_dir, 'val')
+            root = PurePath(self.root_dir, self.val_dir)
             self._val_dataset = build_tree_dataset(root, self.charset_test, self.max_label_length,
                                                    self.min_image_dim, self.remove_whitespace, self.normalize_unicode,
                                                    transform=transform)

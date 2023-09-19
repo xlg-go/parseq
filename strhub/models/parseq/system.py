@@ -31,6 +31,8 @@ from strhub.models.base import CrossEntropySystem
 from strhub.models.utils import init_weights
 from .modules import DecoderLayer, Decoder, Encoder, TokenEmbedding
 
+torch.set_float32_matmul_precision('medium')
+
 
 class PARSeq(CrossEntropySystem):
 
@@ -255,5 +257,7 @@ class PARSeq(CrossEntropySystem):
                 n = (tgt_out != self.pad_id).sum().item()
         loss /= loss_numel
 
-        self.log('loss', loss)
+        self.log('loss', loss, prog_bar=True)
+        self.log('lr', self.optim.param_groups[0]['lr'], prog_bar=True)
+
         return loss

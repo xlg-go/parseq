@@ -47,6 +47,7 @@ class BaseSystem(pl.LightningModule, ABC):
     def __init__(self, tokenizer: BaseTokenizer, charset_test: str,
                  batch_size: int, lr: float, warmup_pct: float, weight_decay: float) -> None:
         super().__init__()
+        self.optim = None
         self.tokenizer = tokenizer
         self.charset_adapter = CharsetAdapter(charset_test)
         self.batch_size = batch_size
@@ -87,10 +88,11 @@ class BaseSystem(pl.LightningModule, ABC):
         # Linear scaling so that the effective learning rate is constant regardless of the number of GPUs used with DDP.
         lr_scale = agb * math.sqrt(self.trainer.num_devices) * self.batch_size / 256.
         lr = lr_scale * self.lr
-        optim = create_optimizer_v2(self, 'adamw', lr, self.weight_decay)
-        sched = OneCycleLR(optim, lr, self.trainer.estimated_stepping_batches, pct_start=self.warmup_pct,
+        # optim = create_optimizer_v2(self, 'adamw', lr, self.weight_decay)
+        self.optim = create_optimizer_v2(self, 'adamw', lr, self.weight_decay)
+        sched = OneCycleLR(self.optim, lr, self.trainer.estimated_stepping_batches, pct_start=self.warmup_pct,
                            cycle_momentum=False)
-        return {'optimizer': optim, 'lr_scheduler': {'scheduler': sched, 'interval': 'step'}}
+        return {'optimizer': self.optim, 'lr_scheduler': {'scheduler': sched, 'interval': 'step'}}
 
     def optimizer_zero_grad(self, epoch: int, batch_idx: int, optimizer: Optimizer, optimizer_idx: int):
         optimizer.zero_grad(set_to_none=True)
@@ -154,10 +156,10 @@ class BaseSystem(pl.LightningModule, ABC):
 
     def validation_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
         acc, ned, loss = self._aggregate_results(outputs)
-        self.log('val_accuracy', 100 * acc, sync_dist=True)
-        self.log('val_NED', 100 * ned, sync_dist=True)
-        self.log('val_loss', loss, sync_dist=True)
-        self.log('hp_metric', acc, sync_dist=True)
+        self.log('val_accuracy', 100 * acc, sync_dist=True, prog_bar=True)
+        self.log('val_NED', 100 * ned, sync_dist=True, prog_bar=True)
+        self.log('val_loss', loss, sync_dist=True, prog_bar=True)
+        self.log('hp_metric', acc, sync_dist=True, prog_bar=True)
 
     def test_step(self, batch, batch_idx) -> Optional[STEP_OUTPUT]:
         return self._eval_step(batch, False)

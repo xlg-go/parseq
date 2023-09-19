@@ -48,7 +48,7 @@ def get_swa_lr_factor(warmup_pct, swa_epoch_start, div_factor=25, final_div_fact
     return _annealing_cos(1, 1 / (div_factor * final_div_factor), pct)
 
 
-@hydra.main(config_path='configs', config_name='main', version_base='1.2')
+@hydra.main(config_path='configs', config_name='main-hw_score_mix', version_base='1.2')
 def main(config: DictConfig):
     trainer_strategy = None
     with open_dict(config):
@@ -57,9 +57,11 @@ def main(config: DictConfig):
         # Special handling for GPU-affected config
         gpu = config.trainer.get('accelerator') == 'gpu'
         devices = config.trainer.get('devices', 0)
+        # dev_num = len(devices) if devices is list else devices
         if gpu:
             # Use mixed-precision training
-            config.trainer.precision = 16
+            # config.trainer.precision = 16
+            config.trainer.precision = 32
         if gpu and devices > 1:
             # Use DDP
             config.trainer.strategy = 'ddp'
