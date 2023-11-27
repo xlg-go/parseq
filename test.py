@@ -64,15 +64,19 @@ def print_results_table(results: List[Result], file=None):
 @torch.inference_mode()
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('checkpoint', help="Model checkpoint (or 'pretrained=<model_id>')")
-    parser.add_argument('--data_root', default='data')
-    parser.add_argument('--batch_size', type=int, default=512)
+    # parser.add_argument('checkpoint', help="Model checkpoint (or 'pretrained=<model_id>')")
+    parser.add_argument('--checkpoint', default='./outputs/parseq/line_score/2023-11-20_08-31-55/checkpoints/last.ckpt')
+    # parser.add_argument('--data_root', default='/workspace3/datasets/lmdb_for_line_score')
+    parser.add_argument('--data_root', default='./demo_images')
+    # parser.add_argument('--batch_size', type=int, default=512)
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--cased', action='store_true', default=False, help='Cased comparison')
     parser.add_argument('--punctuation', action='store_true', default=False, help='Check punctuation')
     parser.add_argument('--new', action='store_true', default=False, help='Evaluate on new benchmark datasets')
     parser.add_argument('--rotation', type=int, default=0, help='Angle of rotation (counter clockwise) in degrees.')
-    parser.add_argument('--device', default='cuda')
+    # parser.add_argument('--device', default='cuda')
+    parser.add_argument('--device', default='cpu')
     args, unknown = parser.parse_known_args()
     kwargs = parse_model_args(unknown)
 
@@ -86,13 +90,17 @@ def main():
 
     model = load_from_checkpoint(args.checkpoint, **kwargs).eval().to(args.device)
     hp = model.hparams
-    datamodule = SceneTextDataModule(args.data_root, '_unused_', hp.img_size, hp.max_label_length, hp.charset_train,
-                                     hp.charset_test, args.batch_size, args.num_workers, False, rotation=args.rotation)
+    datamodule = SceneTextDataModule(
+        root_dir=args.data_root, train_dir='train', val_dir='val',
+        img_size=hp.img_size, max_label_length=hp.max_label_length, charset_train=hp.charset_train,
+        charset_test=hp.charset_test, batch_size=args.batch_size, num_workers=args.num_workers,
+        rotation=args.rotation, augment=False)
 
     test_set = SceneTextDataModule.TEST_BENCHMARK_SUB + SceneTextDataModule.TEST_BENCHMARK
     if args.new:
         test_set += SceneTextDataModule.TEST_NEW
     test_set = sorted(set(test_set))
+    test_set = ['00-images-whole']
 
     results = {}
     max_width = max(map(len, test_set))
@@ -109,15 +117,23 @@ def main():
             ned += res.ned
             confidence += res.confidence
             label_length += res.label_length
+
+            if total > 20000:
+                break
+
         accuracy = 100 * correct / total
         mean_ned = 100 * (1 - ned / total)
         mean_conf = 100 * confidence / total
         mean_label_length = label_length / total
         results[name] = Result(name, total, accuracy, mean_ned, mean_conf, mean_label_length)
 
+    # result_groups = {
+    #     'Benchmark (Subset)': SceneTextDataModule.TEST_BENCHMARK_SUB,
+    #     'Benchmark': SceneTextDataModule.TEST_BENCHMARK
+    # }
     result_groups = {
-        'Benchmark (Subset)': SceneTextDataModule.TEST_BENCHMARK_SUB,
-        'Benchmark': SceneTextDataModule.TEST_BENCHMARK
+        'Benchmark (Subset)': ['00-images-whole'],
+        'Benchmark': ['00-images-whole']
     }
     if args.new:
         result_groups.update({'New': SceneTextDataModule.TEST_NEW})

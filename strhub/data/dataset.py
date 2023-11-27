@@ -17,13 +17,14 @@ import io
 import logging
 import unicodedata
 from pathlib import Path, PurePath
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Sequence
 
 import lmdb
 from PIL import Image
 from torch.utils.data import Dataset, ConcatDataset
 
 from strhub.data.utils import CharsetAdapter
+from torchvision import transforms as T
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class LmdbDataset(Dataset):
 
     def __init__(self, root: str, charset: str, max_label_len: int, min_image_dim: int = 0,
                  remove_whitespace: bool = True, normalize_unicode: bool = True,
-                 unlabelled: bool = False, transform: Optional[Callable] = None):
+                 unlabelled: bool = False, transform: Optional[Callable] = None, img_size: Sequence[int] = None):
         self._env = None
         self.root = root
         self.unlabelled = unlabelled
@@ -65,6 +66,7 @@ class LmdbDataset(Dataset):
         self.filtered_index_list = []
         self.num_samples = self._preprocess_labels(charset, remove_whitespace, normalize_unicode,
                                                    max_label_len, min_image_dim)
+        self.img_size = tuple(img_size)  # h, w
 
     def __del__(self):
         if self._env is not None:
@@ -131,7 +133,34 @@ class LmdbDataset(Dataset):
         buf = io.BytesIO(imgbuf)
         img = Image.open(buf).convert('RGB')
 
+        img = self.pad(img)
         if self.transform is not None:
             img = self.transform(img)
 
         return img, label
+
+    def pad(self, image):
+        target_size = self.img_size
+        # 计算等比例缩放后的大小
+        aspect_ratio = image.width / image.height
+        if aspect_ratio > 1:
+            new_height = target_size[0]
+            new_width = int(target_size[0] * aspect_ratio)
+        else:
+            new_width = target_size[1]
+            new_height = int(target_size[1] / aspect_ratio)
+
+        # 计算填充大小
+        pad_width = max(0, target_size[1] - new_width)
+        pad_height = max(0, target_size[0] - new_height)
+        # 计算填充的位置
+        padding = (0, 0, pad_width, pad_height)
+
+        transform = T.Compose([
+            T.Resize((new_height, new_width), T.InterpolationMode.BICUBIC),
+            T.Pad(padding, fill=255)
+        ])
+        img = transform(image)
+
+        return img
+

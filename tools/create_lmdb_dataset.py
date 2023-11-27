@@ -77,13 +77,13 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
 
 if __name__ == '__main__':
     # fire.Fire(createDataset)
-    root = '/workspace3/datasets'
-    src_root = os.path.join(root, 'hw_score_data')
+    root = '/workspace3/datasets/line_score/'
+    src_root = os.path.join(root, '')
     out_train_root = os.path.join(src_root, '0_lmdb', 'train')
     out_val_root = os.path.join(src_root, '0_lmdb', 'val')
     # dir_name = ['images_00', 'images_01', 'images_02', 'images_03', 'images_04', 'images_05', 'images_06', 'images_07', 'images_08', 'images_09',
     #             'images_10', 'images_10-1']
-    dir_name = ['images_10', 'images_10-1']
+    dir_name = ['00-images-whole']
     for d_name in dir_name:
         for txt_type in ['train', 'test']:
             save_lmdb_path = os.path.join(out_train_root, d_name) if txt_type == 'train' else os.path.join(out_val_root, d_name)
