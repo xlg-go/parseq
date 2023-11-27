@@ -62,6 +62,7 @@ class SceneTextDataModule(pl.LightningDataModule):
             transforms.append(lambda img: img.rotate(rotation, expand=True))
         transforms.extend([
             # T.Resize(img_size, T.InterpolationMode.BICUBIC),
+            Pad(img_size),
             T.ToTensor(),
             T.Normalize(0.5, 0.5)
         ])
@@ -75,7 +76,7 @@ class SceneTextDataModule(pl.LightningDataModule):
             root = PurePath(self.root_dir, self.train_dir)
             self._train_dataset = build_tree_dataset(root, self.charset_train, self.max_label_length,
                                                      self.min_image_dim, self.remove_whitespace, self.normalize_unicode,
-                                                     transform=transform, img_size=self.img_size)
+                                                     transform=transform)
         return self._train_dataset
 
     @property
@@ -86,7 +87,7 @@ class SceneTextDataModule(pl.LightningDataModule):
             root = PurePath(self.root_dir, self.val_dir)
             self._val_dataset = build_tree_dataset(root, self.charset_test, self.max_label_length,
                                                    self.min_image_dim, self.remove_whitespace, self.normalize_unicode,
-                                                   transform=transform, img_size=self.img_size)
+                                                   transform=transform)
         return self._val_dataset
 
     def train_dataloader(self):
@@ -105,7 +106,33 @@ class SceneTextDataModule(pl.LightningDataModule):
         root = PurePath(self.root_dir, self.val_dir)
         datasets = {s: LmdbDataset(str(root / s), self.charset_test, self.max_label_length,
                                    self.min_image_dim, self.remove_whitespace, self.normalize_unicode,
-                                   transform=transform, img_size=self.img_size) for s in subset}
+                                   transform=transform) for s in subset}
         return {k: DataLoader(v, batch_size=self.batch_size, num_workers=self.num_workers,
                               pin_memory=True, collate_fn=self.collate_fn)
                 for k, v in datasets.items()}
+
+
+class Pad:
+    def __init__(self, target_size: Sequence[int]):
+        self.target_size = target_size
+
+    def __call__(self, image):
+        # 计算等比例缩放后的大小
+        aspect_ratio = image.width / image.height
+        new_height = self.target_size[0]
+        new_width = int(new_height * aspect_ratio)
+        new_width = self.target_size[1] if new_width > self.target_size[1] else new_width
+
+        # 计算填充大小
+        pad_width = max(0, self.target_size[1] - new_width)
+        pad_height = max(0, self.target_size[0] - new_height)
+        # 计算填充的位置
+        padding = (0, 0, pad_width, pad_height)
+
+        transform = T.Compose([
+            T.Resize((new_height, new_width), T.InterpolationMode.BICUBIC),
+            T.Pad(padding, fill=255)
+        ])
+        img = transform(image)
+
+        return img
