@@ -19,7 +19,7 @@ from typing import Optional, Callable, Sequence, Tuple
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchvision import transforms as T
-
+from PIL import Image
 from .dataset import build_tree_dataset, LmdbDataset
 
 
@@ -116,7 +116,7 @@ class Pad:
     def __init__(self, target_size: Sequence[int]):
         self.target_size = target_size
 
-    def __call__(self, image):
+    def __call__(self, image: Image.Image):
         # 计算等比例缩放后的大小
         aspect_ratio = image.width / image.height
         new_height = self.target_size[0]

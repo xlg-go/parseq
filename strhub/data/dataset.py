@@ -130,7 +130,7 @@ class LmdbDataset(Dataset):
             imgbuf = txn.get(img_key)
         buf = io.BytesIO(imgbuf)
         img = Image.open(buf).convert('RGB')
-
+        
         if self.transform is not None:
             img = self.transform(img)
 
